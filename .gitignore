@@ -1,0 +1,16 @@
+# LaTeX temp files
+*.log
+*.out
+*.aux
+
+# Output files
+*.zip
+*.pdf
+a.out
+
+# Vim editor temp files
+*~
+
+# input/output files
+*.wav
+*.adpcm

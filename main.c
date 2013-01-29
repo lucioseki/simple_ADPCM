@@ -29,9 +29,9 @@ int main(int argc, char **argv){
 
 	// verifica formato
 	if(inHeader.AudioFormat == PCM_FORMAT){
-		adpcm_code(&outHeader, &outdata, inHeader, indata);
+		adpcm_code(&outHeader, &outdata, inHeader, &indata);
 	}else if(inHeader.AudioFormat == ADPCM_FORMAT){
-		adpcm_decode(&outHeader, &outdata, inHeader, indata);
+		adpcm_decode(&outHeader, &outdata, inHeader, &indata);
 	}else{
 		printf("Invalid file format\n");
 		exit(1);

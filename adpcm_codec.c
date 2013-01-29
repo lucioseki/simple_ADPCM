@@ -6,7 +6,7 @@
 
 #define NUM_SEGMENTS 200 // numero constante de segmentos
 
-void adpcm_code(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, const uint16_t *indata){
+void adpcm_code(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
 	int numSamples = (inHeader.Subchunk2Size * 8) / inHeader.BitsPerSample; // quantidade de amostras do audio
 	int segmentSize = numSamples / NUM_SEGMENTS; // quantidade de amostras por segmento
 	int i, j, diff, aux;
@@ -27,14 +27,14 @@ void adpcm_code(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHe
 	// para cada segmento
 	for(i = 0; i <= NUM_SEGMENTS; i++){
 		// armazena a amostra-chave
-		(*outdata)[bufferPos] = indata[i];
+		(*outdata)[bufferPos] = (*indata)[i];
 		bufferPos++;
 		chunksize += sizeof(uint16_t);
 
 		// calcula a maior diferenca
 		diff = 0;
 		for(j = 1; j < segmentSize; j++){
-			aux = indata[i + j] - indata[i + j - 1];
+			aux = (*indata)[i + j] - (*indata)[i + j - 1];
 			if(aux < 0) aux = -aux; // inverte o sinal negativo
 			if(aux > diff) diff = aux; // atualiza a maior diferenca
 		}
@@ -53,7 +53,7 @@ void adpcm_code(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHe
 		// para cada amostra no segmento
 		for(j = 1; j < segmentSize; j++){
 			// calcula a diferenca
-			diff = indata[i+j] - indata[i + j - 1];
+			diff = (*indata)[i+j] - (*indata)[i + j - 1];
 
 			// desloca os bits ate onde nao foi ocupado ainda, e armazena no buffer
 			bufferSpace -= numBits;
@@ -89,14 +89,14 @@ void adpcm_code(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHe
 
 }
 
-void adpcm_decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, const uint16_t *indata){
+void adpcm_decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
 	*outHeader = inHeader;
 	outHeader->AudioFormat = PCM_FORMAT;
 
 	// realocar memoria do arquivo original
 	int32_t chunksize;
-	chunksize = indata[0] << sizeof(uint16_t) * 8;
-	chunksize += indata[1];
+	chunksize = (*indata)[0] << sizeof(uint16_t) * 8;
+	chunksize += (*indata)[1];
 
 	outHeader->Subchunk2Size = chunksize;
 	*outdata = malloc(chunksize);

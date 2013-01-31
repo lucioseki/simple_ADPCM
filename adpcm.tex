@@ -15,7 +15,10 @@
 \usepackage{cite}
 
 \title{\hrule\vspace{1pt}\hrule\vspace{25pt}}
-\author{\LARGE \bf Lucio Mitsuru Seki}
+\author{\LARGE \bf 
+Jessica dos Santos Machado\\
+Lucio Mitsuru Seki\\
+Viviane Bonadia dos Santos}
 
 \date{\Large \bf Janeiro de 2012 \vspace{25pt}\hrule\vspace{1pt}\hrule}
 
@@ -57,7 +60,9 @@
 \vfill
 \vfill
 
-{\Large Lucio Mitsuru Seki}\\
+{\Large Jessica dos Santos Machado\\
+Lucio Mitsuru Seki\\
+Viviane Bonadia dos Santos}\\
 \bigskip
 {Sorocaba/2013}
 \end{center}
@@ -70,7 +75,7 @@
 A armazenagem de um sinal de áudio na forma digital possui várias vantagens, facilitando a aplicaçao de filtros, a transmissão entre dispositivos, a reprodução e a organização; diminuindo a incidência de ruídos, entre outras. No entanto, precisamos comprimí-lo para viabilizar o seu armazenamento e transmissão.
 
 \paragraph{}
-Uma das abordagens simples de compressão de áudio é ADPCM, uma técnica baseada na redundância no sinal original. Neste artigo descrevo a técnica de compressão ADPCM, e mostro uma implementação simplificada de um codec ADPCM.
+Uma das abordagens simples de compressão de áudio é ADPCM, uma técnica baseada na redundância no sinal original. Neste artigo descrevemos a técnica de compressão ADPCM, e mostramos uma implementação simplificada de um codec ADPCM.
 
 \section{Definições}
 
@@ -80,13 +85,13 @@ A técnica de compressão \textit{Adaptive Differential PCM} - ADPCM se baseia n
 \subsection{Codec}
 
 \paragraph{}
-Um \textit{Coder-decoder} - codec é um software com um par de algoritmos para codificar e decodificar um sinal multimídia, seja de áudio, de imagem ou de vídeo. No contexto atual, a necessidade de codificação sempre está atrelada à necessidade de compressão do arquivo de multimídia, devido a quantidade elevada de memória necessária para armazenar o sinal, e de banda de transmissão para enviar o mesmo de um dispositivo para outro.
+Um \textit{Coder-decoder} - codec é um software com um par de algoritmos para codificar e decodificar um sinal multimídia, seja de áudio, de imagem ou de vídeo. No contexto atual, a necessidade de codificação sempre está atrelada à necessidade de compressão do arquivo de multimídia, devido à quantidade elevada de memória necessária para armazenar o sinal, e de banda de transmissão para enviar o mesmo de um dispositivo para outro.
 
 \paragraph{}
 Um algoritmo de compressão pode ser com perda ou sem perda. Na abordagem com perda, tiramos proveito das características psicofísicas do Homem para reconhecer e interpretar o sinal, e na abordagem sem perda, a característica redundante do sinal.
 
 \paragraph{}
-Há codecs que usam vários algoritmos de compressão, até mesmo combinando os com perda e os sem perda. Dependendo da aplicação, pode melhorar a taxa de compressão, o tempo de compressão ou minimizar a perda.
+Há codecs que usam vários algoritmos de compressão, até mesmo usando ambos os com perda e os sem perda. Dependendo da aplicação, pode melhorar a taxa de compressão, o tempo de compressão e/ou minimizar a perda.
 
 \subsubsection{Algoritmo de compressão com perda}
 \paragraph{}
@@ -169,16 +174,42 @@ A abordagem DPCM é simples, mas possui uma desvantagem por utilizar a quantidad
 Esta diferença pode ser minimizada ao dividir o arquivo em segmentos menores. Ao segmentar o arquivo, cada segmento passa a ter uma amostra chave, a partir da qual calculam-se as diferenças em sequência. Assim, cada segmento passa a ter a sua maior diferença, representando-a com uma determinada quantidade de bits.
 
 \paragraph{}
-Muitas vezes, esta abordagem reduz o tamanho total do arquivo, por considerar uma quantidade ótima local de bits em cada segmento, em vez de utilizar uma quantidade global de bits em todo o arquivo.
+Muitas vezes, esta abordagem reduz o tamanho total do arquivo, por considerar uma quantidade local de bits necessários em cada segmento, em vez de utilizar uma quantidade global de bits em todo o arquivo.
 
 \paragraph{}
 A segmentação do áudio pode ser feita seguindo diversos critérios. Uma abordagem da Interactive Multimedia Association - IMA é de consultar duas tabelas que, de acordo com o valor da amostra, indica a mudança no tamanho do segmento e/ou na quantidade de bits por amostra no segmento atual\cite{Pan-1993}.
 
-\paragraph{}
-Neste artigo fiz uma implementação mais simples, onde o WAVE original é segmentado em duzentas partes. Após processar as amostras num segmento, o algoritmo escolhe a próxima amostra como chave, a partir da qual calcula a diferença das amostras subsequentes, e assim repetidamente.
-Não implementei a descompressão até o presente momento.
-
 \section{Implementação}
+
+\paragraph{}
+Neste artigo fizemos uma implementação mais simples. Assumimos que os dados do áudio é uma sequência de inteiros de 16 bits. Definimos uma constante MAXDIFF com o valor 2047, que é o maior valor representado em 12 bits, sendo 1 bit do sinal.
+
+\paragraph{}
+Criamos a estrutura \textit{segmentHeader} - um cabeçalho para cada segmento, que armazena:
+\begin{itemize}
+\item \textit{numSamples} - a quantidade de amostras neste segmento;
+\item \textit{segmentBPS} - a quantidade de bits utilizados para representar uma amostra neste segmento;
+\item \textit{keyValue} - o valor da amostra chave deste segmento; e
+\item \textit{segment} - um ponteiro para o vetor que vai armazenar as diferenças subsequentes.
+\end{itemize}
+
+\paragraph{}
+O algoritmo carrega no vetor \textit{indata} os valores do arquivo WAVE original. Feito isso, realiza os seguintes passos:\\
+
+\begin{description}
+\item[Análise:] armazena a primeira amostra (keyValue), e percorre pelas amostras seguintes, para calcular a maior diferença entre uma amostra e a seguinte.\\
+No momento em que encontrar uma diferença maior que (+MAXDIFF) ou menor que (-MAXDIFF), ele considera como fim deste segmento e o início do próximo. Ou seja, ele não armazena diferenças que não possam ser representadas em 12 bits.\\
+Então, calcula-se a quantidade mínima de bits para representar a maior diferença encontrada neste segmento (segmentBPS).\\
+Armazenamos o número de amostras processadas (numSamples) e criamos um vetor para armazenar as diferenças (segment).
+\item[Compressão:] Utilizamos um ponteiro que aponta para a primeira posição do vetor indata.\\
+Ao concluir o passo da análise, preenchendo as informações de cabeçalho, este ponteiro percorre novamente o segmento para armazenar de fato os valores da diferença, utilizando o número de bits definido anteriormente.
+\end{description}
+\paragraph{}
+Estes dois passos se repetem até atingir o final do arquivo.
+
+
+\paragraph{}
+Não implementamos a descompressão até o presente momento.
 
 \paragraph{}
 Listei abaixo a implemntação em linguagem C de cada um dos conceitos descritos na seção anterior.

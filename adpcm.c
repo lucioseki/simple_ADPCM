@@ -2,104 +2,99 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "adpcm_codec.h"
+#include "adpcm.h"
 
-void adpcm_code(segmentHeader *firstSegHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
-	int numSamples = (inHeader.Subchunk2Size * 8) / inHeader.BitsPerSample; // quantidade de amostras do audio
-	uint16_t numBits, bufferPos, bufferSpace;
-	segmentHeader currentSegment;
-	uint16_t *segmentBegin;
-	int i, j, diff, aux;
-
-	*outdata = malloc(inHeader.Subchunk2Size); // no maximo vai ter o tamanho do arquivo original.
-
-	// copia e altera o cabecalho
+segmentHeader *code(outHeader, inHeader, indata)
+	HeaderType *outHeader;
+	const HeaderType inHeader;
+	uint16_t **indata;
+{
 	*outHeader = inHeader;
 	outHeader->AudioFormat = ADPCM_FORMAT;
 
-	bufferPos = 0;
-	// armazena o tamanho do arquivo original como int
-	((int*)(*outdata))[bufferPos] = inHeader.Subchunk2Size;
+	segmentHeader *firstHeader = malloc(sizeof(segmentHeader));
+	segmentHeader *h = firstHeader;
+	uint16_t *segment, buffer, bufferPos;
 
-	// para cada segmento
-	for(i = 0; i <= numSamples; i++){
+	int i, j, diff, auxdiff, numBits, firstPos;
+	int numSamples = inHeader.Subchunk2Size  * 8 / inHeader.BitsPerSample;
 
-		// posicao inicial deste segmento
-		segmentBegin = (*indata + i);
+	// processa as amostras
+	for(i = 0; i < numSamples - 1; i++){
+		firstPos = i;
 
-		// armazena a amostra-chave deste segmento
-		currentSegment.keyValue = (*indata)[i];
-		i++;
+		h->keyValue = (*indata)[i]; // primeira amostra do segmento
 
-		bufferPos++;
-		chunksize += sizeof(uint16_t);
+		// encontra a maior diferenca
+		diff = auxdiff = 0;
+		do {
+			auxdiff = diff;
 
-		// calcula a maior diferenca
-		diff = 0;
-		for(j = 1; j < segmentSize; j++){
-			aux = (*indata)[i + j] - (*indata)[i + j - 1];
-			if(aux < 0) aux = -aux; // inverte o sinal negativo
-			if(aux > diff) diff = aux; // atualiza a maior diferenca
-		}
+			diff = (*indata)[i] - (*indata)[i + 1];
 
-		// calcula a quantidade de bits por amostra neste segmento
+			// se for negativo, troca o sinal
+			if (diff < 0) diff = -diff;
+
+			// se a diferenca for muito grante, fim do segmento
+			if(diff > MAXDIFF || diff < -MAXDIFF) break;
+
+			// armazena a maior diferenca
+			if(auxdiff > diff) diff = auxdiff;
+
+			i++;
+		}while(i < numSamples - 1);
+
+		// quantidade de amostras no segmento
+		h->numSamples = i - firstPos + 1;
+
+		// quantidade de bits por amostra
 		numBits = 0;
 		while(pow(2, numBits) < diff) numBits++;
-		numBits++; // mais um bit do sinal // armazena a quantidade de bits por amostra neste segmento
-		(*outdata)[bufferPos] = numBits;
-		bufferPos++;
-		chunksize += sizeof(uint16_t);
+		numBits++; // bit do sinal
+		h->segmentBPS = numBits;
 
-		// esvazia buffer
-		bufferSpace = sizeof(uint16_t) * 8;
+		// cria o segmento comprimido
+		segment = malloc(h->numSamples * numBits / 8 + 1);
+		h->segment = segment;
 
-		// para cada amostra no segmento
-		for(j = 1; j < segmentSize; j++){
-			// calcula a diferenca
-			diff = (*indata)[i+j] - (*indata)[i + j - 1];
+		// comprime o segmento
+		buffer = 0;
+		bufferPos = sizeof(uint16_t) * 8;
+		for(j = firstPos; j < i; j++){
+			diff = (*indata)[j] - (*indata)[j+1]; 
 
-			// desloca os bits ate onde nao foi ocupado ainda, e armazena no buffer
-			bufferSpace -= numBits;
-			(*outdata)[bufferPos] += diff << bufferSpace;
+			// se tiver espaco no buffer
+			if(bufferPos >= numBits){
+				bufferPos -= numBits;
+				// buffer += diff << bufferPos;
+			}else{ // se nao couber no buffer
+				// salva o que couber
+				// buffer += diff << (bufferPos - numBits);
 
-			// se ainda tem bufferSpace, pega a proxima amostra;
-			// se encher o bufferSpace
-			if(bufferSpace <= numBits){
+				// salva no segmento e avança a posição
+				*segment = buffer;
+				segment++;
 
-				// prepara para preencher a proxima posicao do buffer de saida
-				bufferPos++;
-				chunksize += sizeof(uint16_t);
+				// reseta o buffer
+				// bufferPos = sizeof(uint16_t) * 8;
+				
+				// salva o que nao coube
+				// buffer += (diff >> (bufferPos - numBits)) << bufferPos;
+			}
+		}
 
-				// se completou certinho
-				if(bufferSpace == numBits){
-					// esvazia buffer;
-					bufferSpace = sizeof(uint16_t) * 8;
-				}
+		// cria proximo segmento
+		if(i < numSamples -1){
+			h->nextHeader = malloc(sizeof(segmentHeader));
+			h = h->nextHeader;
+		}else{ // ultimo segmento
+			h->nextHeader = NULL;
+		}
+	}
 
-				// se nao coube tudo
-				if(bufferSpace < numBits){
-					// o que sobrou coloca no inicio da proxima posicao
-					bufferSpace += bufferSpace - numBits;
-					(*outdata)[bufferPos] += diff << bufferSpace;
-				}
-
-			} // end se nao couber no buffer
-		} // end para cada amostra no segmento
-	} // para cada segmento no arquivo
-	
-	// atualiza o tamanho do chunk de dados
-	outHeader->Subchunk2Size = chunksize;
-
+	return firstHeader;
 }
 
-void adpcm_decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
-	*outHeader = inHeader;
-	outHeader->AudioFormat = PCM_FORMAT;
+void decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, segmentHeader *indata){
 
-	// realocar memoria do arquivo original
-	int32_t chunksize;
-	chunksize = ((int*)(*indata))[0];
-
-	outHeader->Subchunk2Size = chunksize;
-	*outdata = malloc(chunksize);
 }

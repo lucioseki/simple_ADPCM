@@ -4,30 +4,33 @@
 
 #include "adpcm_codec.h"
 
-#define NUM_SEGMENTS 200 // numero constante de segmentos
-
-void adpcm_code(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
+void adpcm_code(segmentHeader *firstSegHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
 	int numSamples = (inHeader.Subchunk2Size * 8) / inHeader.BitsPerSample; // quantidade de amostras do audio
-	int segmentSize = numSamples / NUM_SEGMENTS; // quantidade de amostras por segmento
-	int i, j, diff, aux;
-	int chunksize = 0;
-	*outdata = malloc(inHeader.Subchunk2Size); // no maximo vai ter o tamanho do arquivo original.
 	uint16_t numBits, bufferPos, bufferSpace;
+	segmentHeader currentSegment;
+	uint16_t *segmentBegin;
+	int i, j, diff, aux;
+
+	*outdata = malloc(inHeader.Subchunk2Size); // no maximo vai ter o tamanho do arquivo original.
 
 	// copia e altera o cabecalho
 	*outHeader = inHeader;
 	outHeader->AudioFormat = ADPCM_FORMAT;
 
 	bufferPos = 0;
-	// armazena o tamanho do arquivo original
-	(*outdata)[bufferPos] = inHeader.Subchunk2Size >> sizeof(uint16_t) * 8;
-	bufferPos++;
-	(*outdata)[bufferPos] = inHeader.Subchunk2Size << sizeof(uint16_t) * 8;
+	// armazena o tamanho do arquivo original como int
+	((int*)(*outdata))[bufferPos] = inHeader.Subchunk2Size;
 
 	// para cada segmento
-	for(i = 0; i <= NUM_SEGMENTS; i++){
-		// armazena a amostra-chave
-		(*outdata)[bufferPos] = (*indata)[i];
+	for(i = 0; i <= numSamples; i++){
+
+		// posicao inicial deste segmento
+		segmentBegin = (*indata + i);
+
+		// armazena a amostra-chave deste segmento
+		currentSegment.keyValue = (*indata)[i];
+		i++;
+
 		bufferPos++;
 		chunksize += sizeof(uint16_t);
 
@@ -95,8 +98,7 @@ void adpcm_decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType in
 
 	// realocar memoria do arquivo original
 	int32_t chunksize;
-	chunksize = (*indata)[0] << sizeof(uint16_t) * 8;
-	chunksize += (*indata)[1];
+	chunksize = ((int*)(*indata))[0];
 
 	outHeader->Subchunk2Size = chunksize;
 	*outdata = malloc(chunksize);

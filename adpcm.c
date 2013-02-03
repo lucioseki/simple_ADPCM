@@ -28,7 +28,7 @@ segmentHeader *code(outHeader, inHeader, indata)
 
 		// encontra a maior diferenca
 		diff = auxdiff = 0;
-		do {
+		while(i < numSamples - 1){
 			auxdiff = (*indata)[i] - (*indata)[i + 1];
 
 			// se for negativo, troca o sinal
@@ -41,7 +41,7 @@ segmentHeader *code(outHeader, inHeader, indata)
 			if(auxdiff > diff) diff = auxdiff;
 
 			i++;
-		}while(i < numSamples - 1);
+		}
 
 		// quantidade de amostras no segmento
 		h->numSamples = i - firstPos + 1;
@@ -66,7 +66,7 @@ segmentHeader *code(outHeader, inHeader, indata)
 			diff = diff << (sizeof(uint16_t) * 8 - numBits);
 
 			// se tiver espaco no buffer
-			if(bufferPos <= numBits){
+			if( (sizeof(uint16_t) * 8) - bufferPos <= numBits){
 
 				// armazena no buffer
 				buffer += diff >> bufferPos;
@@ -74,18 +74,20 @@ segmentHeader *code(outHeader, inHeader, indata)
 
 			}else{ // se nao couber no buffer
 				// salva o que couber
+				buffer += diff >> bufferPos;
 
 				// salva no segmento e avança a posição
 				*segment = buffer;
 				segment++;
 
 				// reseta o buffer
-				bufferPos = 0;
-				
-				// desloca o que nao coube para o inicio
+				buffer = 0;
 
-				// salva o que nao coube
-				// buffer += diff << numBits - tamanhoDoQueNaoCoube;
+				// salva o que nao coube no inicio do buffer
+				buffer += diff << (sizeof(uint16_t) * 8 - bufferPos);
+
+				// avanca a posicao no buffer
+				bufferPos = (sizeof(uint16_t) * 8 - bufferPos - numBits);
 			}
 		}
 

@@ -2,11 +2,12 @@
 #include <stdlib.h>
 
 #include "wave_header.h"
-#include "adpcm_codec.h"
+#include "adpcm.h"
 
 int main(int argc, char **argv){
 	FILE *infile, *outfile;
 	HeaderType inHeader, outHeader;
+	segmentHeader *segHeader;
 	uint16_t *indata, *outdata = NULL;
 
 	// verifica o uso
@@ -29,9 +30,9 @@ int main(int argc, char **argv){
 
 	// verifica formato
 	if(inHeader.AudioFormat == PCM_FORMAT){
-		adpcm_code(&outHeader, &outdata, inHeader, &indata);
+		segHeader = code(&outHeader, inHeader, &indata);
 	}else if(inHeader.AudioFormat == ADPCM_FORMAT){
-		adpcm_decode(&outHeader, &outdata, inHeader, &indata);
+		decode(&outHeader, &outdata, inHeader, &indata);
 	}else{
 		printf("Invalid file format\n");
 		exit(1);
@@ -46,7 +47,27 @@ int main(int argc, char **argv){
 
 	// escreve arquivo de saida
 	fwrite(&outHeader, sizeof(HeaderType), 1, outfile);
-	fwrite(outdata, 1, outHeader.Subchunk2Size, outfile);
+
+	if(inHeader.AudioFormat == PCM_FORMAT){
+		for(segHeader; segHeader->nextHeader != NULL; segHeader = segHeader->nextHeader){
+			// tamanho do audio que deve ser recuperado
+			fwrite(&(inHeader.Subchunk2Size), sizeof(int32_t), 1, outfile);
+
+			// primeira amostra do segmento
+			fwrite(&(segHeader->keyValue), sizeof(uint16_t), 1, outfile); 
+
+			// quantidade de amostras no segmento
+			fwrite(&(segHeader->numSamples), sizeof(uint16_t), 1, outfile);
+
+			// bits por amostra do segmento
+			fwrite(&(segHeader->segmentBPS), sizeof(uint16_t), 1, outfile);
+
+			// os valores das amostras comprimidas
+			fwrite(segHeader->segment, segHeader->segmentBPS/8, segHeader->numSamples, outfile);
+		} 
+	}else if(inHeader.AudioFormat == ADPCM_FORMAT){
+		
+	}
 
 	if(outdata != NULL){
 		free(outdata);

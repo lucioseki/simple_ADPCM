@@ -12,4 +12,4 @@ typedef struct segmentHeader{
 
 segmentHeader *code(HeaderType *outHeader, const HeaderType inHeader, uint16_t **indata);
 
-void decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, segmentHeader *indata);
+void decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata);

@@ -66,7 +66,7 @@ segmentHeader *code(outHeader, inHeader, indata)
 			diff = diff << (sizeof(uint16_t) * 8 - numBits);
 
 			// se tiver espaco no buffer
-			if( (sizeof(uint16_t) * 8) - bufferPos <= numBits){
+			if( (sizeof(uint16_t) * 8) - bufferPos >= numBits){
 
 				// armazena no buffer
 				buffer += diff >> bufferPos;
@@ -103,6 +103,6 @@ segmentHeader *code(outHeader, inHeader, indata)
 	return firstHeader;
 }
 
-void decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, segmentHeader *indata){
+void decode(HeaderType *outHeader, uint16_t **outdata, const HeaderType inHeader, uint16_t **indata){
 
 }

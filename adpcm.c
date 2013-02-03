@@ -15,8 +15,9 @@ segmentHeader *code(outHeader, inHeader, indata)
 	segmentHeader *firstHeader = malloc(sizeof(segmentHeader));
 	segmentHeader *h = firstHeader;
 	uint16_t *segment, buffer, bufferPos;
+	uint16_t diff, auxdiff;
 
-	int i, j, diff, auxdiff, numBits, firstPos;
+	int i, j, numBits, firstPos;
 	int numSamples = inHeader.Subchunk2Size  * 8 / inHeader.BitsPerSample;
 
 	// processa as amostras
@@ -31,7 +32,7 @@ segmentHeader *code(outHeader, inHeader, indata)
 			auxdiff = (*indata)[i] - (*indata)[i + 1];
 
 			// se for negativo, troca o sinal
-			if (auxdiff < 0) auxdiff = -auxdiff;
+			if ( ((int16_t)auxdiff) < 0 ) auxdiff = -auxdiff;
 
 			// se a diferenca for muito grante, fim do segmento
 			if(auxdiff > MAXDIFF) break;
@@ -52,7 +53,7 @@ segmentHeader *code(outHeader, inHeader, indata)
 		h->segmentBPS = numBits;
 
 		// cria o segmento comprimido
-		segment = malloc(h->numSamples * numBits / 8 + 1);
+		segment = malloc( (h->numSamples * numBits / 8) + 1);
 		h->segment = segment;
 
 		// comprime o segmento
@@ -61,10 +62,16 @@ segmentHeader *code(outHeader, inHeader, indata)
 		for(j = firstPos; j < i; j++){
 			diff = (*indata)[j] - (*indata)[j+1]; 
 
+			// desloca os bits para o inicio
+			diff = diff << sizeof(uint16_t) * 8 - numBits;
+
 			// se tiver espaco no buffer
 			if(bufferPos >= numBits){
+
+				// armazena no buffer
 				bufferPos -= numBits;
 				// buffer += diff << bufferPos;
+
 			}else{ // se nao couber no buffer
 				// salva o que couber
 				// buffer += diff << (bufferPos - numBits);

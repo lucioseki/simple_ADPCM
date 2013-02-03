@@ -58,33 +58,34 @@ segmentHeader *code(outHeader, inHeader, indata)
 
 		// comprime o segmento
 		buffer = 0;
-		bufferPos = sizeof(uint16_t) * 8;
+		bufferPos = 0;
 		for(j = firstPos; j < i; j++){
 			diff = (*indata)[j] - (*indata)[j+1]; 
 
 			// desloca os bits para o inicio
-			diff = diff << sizeof(uint16_t) * 8 - numBits;
+			diff = diff << (sizeof(uint16_t) * 8 - numBits);
 
 			// se tiver espaco no buffer
-			if(bufferPos >= numBits){
+			if(bufferPos <= numBits){
 
 				// armazena no buffer
-				bufferPos -= numBits;
-				// buffer += diff << bufferPos;
+				buffer += diff >> bufferPos;
+				bufferPos += numBits;
 
 			}else{ // se nao couber no buffer
 				// salva o que couber
-				// buffer += diff << (bufferPos - numBits);
 
 				// salva no segmento e avança a posição
 				*segment = buffer;
 				segment++;
 
 				// reseta o buffer
-				// bufferPos = sizeof(uint16_t) * 8;
+				bufferPos = 0;
 				
+				// desloca o que nao coube para o inicio
+
 				// salva o que nao coube
-				// buffer += (diff >> (bufferPos - numBits)) << bufferPos;
+				// buffer += diff << numBits - tamanhoDoQueNaoCoube;
 			}
 		}
 

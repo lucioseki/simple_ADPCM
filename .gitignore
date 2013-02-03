@@ -6,6 +6,7 @@
 # Output files
 *.zip
 *.pdf
+*.o
 a.out
 
 # Vim editor temp files

@@ -28,15 +28,13 @@ segmentHeader *code(outHeader, inHeader, indata)
 		// encontra a maior diferenca
 		diff = auxdiff = 0;
 		do {
-			auxdiff = diff;
-
-			diff = (*indata)[i] - (*indata)[i + 1];
+			auxdiff = (*indata)[i] - (*indata)[i + 1];
 
 			// se for negativo, troca o sinal
-			if (diff < 0) diff = -diff;
+			if (auxdiff < 0) auxdiff = -auxdiff;
 
 			// se a diferenca for muito grante, fim do segmento
-			if(diff > MAXDIFF || diff < -MAXDIFF) break;
+			if(auxdiff > MAXDIFF) break;
 
 			// armazena a maior diferenca
 			if(auxdiff > diff) diff = auxdiff;
